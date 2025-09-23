@@ -21,7 +21,7 @@ func LoadConfig() *Config {
 	}
 
 	if os.Getenv("RUNNING_IN_DOCKER") == "" {
-		if err := godotenv.Load("../.env." + env); err != nil {
+		if err := godotenv.Load(".env." + env); err != nil {
 			logger.Error("Failed to load .env file: ", err, "")
 		}
 	}
