@@ -7,4 +7,6 @@ func NewLeakedPasswordsDownloader() *LeakedPasswordsDownloader {
 	return &LeakedPasswordsDownloader{}
 }
 
-func (leakedPasswordsDownloader *LeakedPasswordsDownloader) Download() {}
+func (leakedPasswordsDownloader *LeakedPasswordsDownloader) Download() {
+
+}

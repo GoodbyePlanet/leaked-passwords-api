@@ -11,26 +11,25 @@ type Handler struct {
 	passwordService *service.CheckPassword
 }
 
-func RegisterRoutes(r *gin.Engine, checkPassword *service.CheckPassword) {
-	h := &Handler{passwordService: checkPassword}
+func RegisterRoutes(router *gin.Engine, checkPassword *service.CheckPassword) {
+	handler := &Handler{passwordService: checkPassword}
 
-	// Routes
-	r.POST("/check", h.checkPasswordHandler)
+	router.POST("/check", handler.checkPasswordHandler)
 }
 
-func (h *Handler) checkPasswordHandler(c *gin.Context) {
-	var req struct {
+func (handler *Handler) checkPasswordHandler(context *gin.Context) {
+	var request struct {
 		Password string `json:"password"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	if err := context.ShouldBindJSON(&request); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	isPwned := h.passwordService.CheckPassword(req.Password)
+	isPwned := handler.passwordService.CheckPassword(request.Password)
 
-	c.JSON(http.StatusOK, gin.H{
-		"password": req.Password,
+	context.JSON(http.StatusOK, gin.H{
+		"password": request.Password,
 		"pwned":    isPwned,
 	})
 }
