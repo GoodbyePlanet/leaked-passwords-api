@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const apiEndpoint = "https://api.pwnedpasswords.com/range/%s"
+const pwnedRangeApiUrl = "https://api.pwnedpasswords.com/range/%s"
 
 type HibpDownloader struct {
 	nWorkers     uint64
@@ -26,7 +26,7 @@ func Download(parallelism uint64) {
 		client:       &http.Client{Timeout: 10 * time.Second},
 	}
 
-	hd.hex5 = hex5generator()
+	hd.hex5 = generateHex5Prefixes()
 	fmt.Printf("Downloading SHA1 hashes with %d workers\n\n", hd.nWorkers)
 
 	var wg sync.WaitGroup
@@ -54,7 +54,7 @@ func (hd *HibpDownloader) downloader() {
 		const maxRetries = 5
 		ok := false
 		for attempt := 0; attempt < maxRetries && !ok; attempt++ {
-			url := fmt.Sprintf(apiEndpoint, hex5)
+			url := fmt.Sprintf(pwnedRangeApiUrl, hex5)
 			req, _ := http.NewRequest(http.MethodGet, url, nil)
 			req.Header.Set("User-Agent", "hibp-downloader/1.0")
 
@@ -63,6 +63,7 @@ func (hd *HibpDownloader) downloader() {
 				time.Sleep(time.Second * time.Duration(attempt+1))
 				continue
 			}
+
 			if response.StatusCode != http.StatusOK {
 				response.Body.Close()
 				time.Sleep(time.Second * time.Duration(attempt+1))
@@ -71,12 +72,13 @@ func (hd *HibpDownloader) downloader() {
 
 			responseBody, err := io.ReadAll(response.Body)
 			response.Body.Close()
+
 			if err != nil {
 				time.Sleep(time.Second * time.Duration(attempt+1))
 				continue
 			}
 
-			hd.responseData <- hd.applyHex5Prefix(hex5, responseBody)
+			hd.responseData <- hd.appendPrefix(hex5, responseBody)
 			ok = true
 		}
 		if !ok {
@@ -85,7 +87,7 @@ func (hd *HibpDownloader) downloader() {
 	}
 }
 
-func (hd *HibpDownloader) applyHex5Prefix(hex5 string, responseBody []byte) []byte {
+func (hd *HibpDownloader) appendPrefix(hex5 string, responseBody []byte) []byte {
 	var b strings.Builder
 	scanner := bufio.NewScanner(strings.NewReader(string(responseBody)))
 	for scanner.Scan() {
@@ -97,7 +99,7 @@ func (hd *HibpDownloader) applyHex5Prefix(hex5 string, responseBody []byte) []by
 	return []byte(b.String())
 }
 
-func hex5generator() chan string {
+func generateHex5Prefixes() chan string {
 	const total = 0x100_000 // 0xFFFFF + 1 = 1,048,576
 	ch := make(chan string)
 
