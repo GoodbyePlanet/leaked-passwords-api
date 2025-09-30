@@ -16,12 +16,14 @@ type HibpDownloader struct {
 	nWorkers     uint64
 	hex5         <-chan string
 	responseData chan []byte
+	client       *http.Client
 }
 
 func Download(parallelism uint64) {
 	hd := &HibpDownloader{
 		nWorkers:     parallelism,
 		responseData: make(chan []byte, 100),
+		client:       &http.Client{Timeout: 10 * time.Second},
 	}
 
 	hd.hex5 = hex5generator()
@@ -36,14 +38,18 @@ func Download(parallelism uint64) {
 		}()
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(hd.responseData)
+	}()
+
+	for blob := range hd.responseData {
+		fmt.Printf("Got %d bytes of data\n", len(blob))
+		// TODO: store into Badger
+	}
 }
 
 func (hd *HibpDownloader) downloader() {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
 	for hex5 := range hd.hex5 {
 		const maxRetries = 5
 		ok := false
@@ -52,7 +58,7 @@ func (hd *HibpDownloader) downloader() {
 			req, _ := http.NewRequest(http.MethodGet, url, nil)
 			req.Header.Set("User-Agent", "hibp-downloader/1.0")
 
-			response, err := client.Do(req)
+			response, err := hd.client.Do(req)
 			if err != nil {
 				time.Sleep(time.Second * time.Duration(attempt+1))
 				continue
