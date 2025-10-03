@@ -3,8 +3,11 @@ package service
 import (
 	"bufio"
 	"fmt"
+	"github.com/dgraph-io/badger"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -17,17 +20,23 @@ type HibpDownloader struct {
 	hex5         <-chan string
 	responseData chan []byte
 	client       *http.Client
+	db           *badger.DB
+	logger       *slog.Logger
 }
 
-func Download(parallelism uint64) {
-	hd := &HibpDownloader{
-		nWorkers:     parallelism,
+func NewHibpDownloader(workers uint64, db *badger.DB) *HibpDownloader {
+	return &HibpDownloader{
+		nWorkers:     workers,
 		responseData: make(chan []byte, 100),
 		client:       &http.Client{Timeout: 10 * time.Second},
+		db:           db,
+		logger:       slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 	}
+}
 
+func (hd *HibpDownloader) DownloadPwnedPasswords() {
 	hd.hex5 = generateHex5Prefixes()
-	fmt.Printf("Downloading SHA1 hashes with %d workers\n\n", hd.nWorkers)
+	hd.logger.Info("Starting download with ", hd.nWorkers, "workers")
 
 	var wg sync.WaitGroup
 	for i := uint64(0); i < hd.nWorkers; i++ {
@@ -39,14 +48,16 @@ func Download(parallelism uint64) {
 	}
 
 	go func() {
-		wg.Wait()
-		close(hd.responseData)
+		defer hd.logger.Info("DB writer finished")
+
+		for blob := range hd.responseData {
+			hd.storeInDB(blob)
+		}
 	}()
 
-	for blob := range hd.responseData {
-		fmt.Printf("Got %d bytes of data\n", len(blob))
-		// TODO: store into Badger
-	}
+	wg.Wait()
+	close(hd.responseData) // ensure a DB writer finishes
+	hd.logger.Info("Downloading and storing finished")
 }
 
 func (hd *HibpDownloader) downloader() {
@@ -56,15 +67,24 @@ func (hd *HibpDownloader) downloader() {
 		for attempt := 0; attempt < maxRetries && !ok; attempt++ {
 			url := fmt.Sprintf(pwnedRangeApiUrl, hex5)
 			req, _ := http.NewRequest(http.MethodGet, url, nil)
-			req.Header.Set("User-Agent", "hibp-downloader/1.0")
+			req.Header.Set("User-Agent", "hibp-downloader-go")
 
 			response, err := hd.client.Do(req)
 			if err != nil {
+				hd.logger.Warn("HTTP request failed",
+					slog.String("prefix", hex5),
+					slog.Int("attempt", attempt+1),
+					slog.Any("error", err),
+				)
 				time.Sleep(time.Second * time.Duration(attempt+1))
 				continue
 			}
 
 			if response.StatusCode != http.StatusOK {
+				hd.logger.Warn("Unexpected status code",
+					slog.String("prefix", hex5),
+					slog.Int("status", response.StatusCode),
+				)
 				response.Body.Close()
 				time.Sleep(time.Second * time.Duration(attempt+1))
 				continue
@@ -74,6 +94,10 @@ func (hd *HibpDownloader) downloader() {
 			response.Body.Close()
 
 			if err != nil {
+				hd.logger.Error("Failed to read response body",
+					slog.String("prefix", hex5),
+					slog.Any("error", err),
+				)
 				time.Sleep(time.Second * time.Duration(attempt+1))
 				continue
 			}
@@ -82,8 +106,38 @@ func (hd *HibpDownloader) downloader() {
 			ok = true
 		}
 		if !ok {
-			fmt.Printf("failed after retries: %s\n", hex5)
+			hd.logger.Error("Failed after retries", slog.String("prefix", hex5))
 		}
+	}
+}
+
+func (hd *HibpDownloader) storeInDB(blob []byte) {
+	lines := strings.Split(string(blob), "\r\n")
+
+	err := hd.db.Update(func(txn *badger.Txn) error {
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+
+			parts := strings.SplitN(line, ":", 2)
+
+			if len(parts) != 2 {
+				continue
+			}
+
+			hash := parts[0]
+			count := parts[1]
+
+			if err := txn.Set([]byte(hash), []byte(count)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		hd.logger.Error("Failed to store data in Badger", slog.Any("error", err))
 	}
 }
 
