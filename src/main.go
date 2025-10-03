@@ -25,6 +25,10 @@ func main() {
 	defer database.Close()
 	logger.Info("Database initialized!")
 
+	scheduler := service.NewScheduledDownload(database)
+	c := scheduler.RunDownload()
+	defer c.Stop()
+
 	router := gin.Default()
 
 	checkPasswordService := service.NewCheckPassword()

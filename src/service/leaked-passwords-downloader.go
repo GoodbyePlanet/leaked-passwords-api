@@ -17,6 +17,7 @@ const pwnedRangeApiUrl = "https://api.pwnedpasswords.com/range/%s"
 
 type HibpDownloader struct {
 	nWorkers     uint64
+	nPrefixes    int
 	hex5         <-chan string
 	responseData chan []byte
 	client       *http.Client
@@ -24,9 +25,10 @@ type HibpDownloader struct {
 	logger       *slog.Logger
 }
 
-func NewHibpDownloader(workers uint64, db *badger.DB) *HibpDownloader {
+func NewHibpDownloader(workers uint64, prefixes int, db *badger.DB) *HibpDownloader {
 	return &HibpDownloader{
 		nWorkers:     workers,
+		nPrefixes:    prefixes,
 		responseData: make(chan []byte, 100),
 		client:       &http.Client{Timeout: 10 * time.Second},
 		db:           db,
@@ -34,9 +36,9 @@ func NewHibpDownloader(workers uint64, db *badger.DB) *HibpDownloader {
 	}
 }
 
-func (hd *HibpDownloader) DownloadPwnedPasswords() {
-	hd.hex5 = generateHex5Prefixes()
-	hd.logger.Info("Starting download with ", hd.nWorkers, "workers")
+func (hd *HibpDownloader) DownloadAndSavePwnedPasswords() {
+	hd.hex5 = generateHex5Prefixes(hd.nPrefixes)
+	hd.logger.Info("Starting download with ", hd.nWorkers, "workers and ", hd.nPrefixes, "prefixes")
 
 	var wg sync.WaitGroup
 	for i := uint64(0); i < hd.nWorkers; i++ {
@@ -51,7 +53,7 @@ func (hd *HibpDownloader) DownloadPwnedPasswords() {
 		defer hd.logger.Info("DB writer finished")
 
 		for blob := range hd.responseData {
-			hd.storeInDB(blob)
+			hd.saveInDB(blob)
 		}
 	}()
 
@@ -111,7 +113,7 @@ func (hd *HibpDownloader) downloader() {
 	}
 }
 
-func (hd *HibpDownloader) storeInDB(blob []byte) {
+func (hd *HibpDownloader) saveInDB(blob []byte) {
 	lines := strings.Split(string(blob), "\r\n")
 
 	err := hd.db.Update(func(txn *badger.Txn) error {
