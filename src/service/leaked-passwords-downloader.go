@@ -153,8 +153,12 @@ func (hd *HibpDownloader) appendPrefix(hex5 string, responseBody []byte) []byte 
 	return []byte(b.String())
 }
 
-func generateHex5Prefixes() chan string {
-	const total = 0x100_000 // 0xFFFFF + 1 = 1,048,576
+func generateHex5Prefixes(limit ...int) chan string {
+	total := 0x100_000 // 0xFFFFF + 1 = 1,048,576
+	if len(limit) > 0 {
+		total = limit[0]
+	}
+
 	ch := make(chan string)
 
 	go func() {
