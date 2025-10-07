@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/robfig/cron/v3"
 	"log/slog"
 	"os"

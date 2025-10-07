@@ -32,7 +32,8 @@ func main() {
 	router := gin.Default()
 
 	checkPasswordService := service.NewCheckPassword()
-	api.RegisterRoutes(router, checkPasswordService)
+	badgerDebugService := service.NewBadgerHashReader(database)
+	api.RegisterRoutes(router, checkPasswordService, badgerDebugService)
 
 	PORT := config.LoadConfig().PORT
 	server := &http.Server{

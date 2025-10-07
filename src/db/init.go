@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v4"
 	"log"
 )
 

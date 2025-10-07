@@ -3,7 +3,7 @@ package service
 import (
 	"bufio"
 	"fmt"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v4"
 	"io"
 	"log/slog"
 	"net/http"
