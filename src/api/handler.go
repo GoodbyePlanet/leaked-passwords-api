@@ -13,9 +13,11 @@ type Handler struct {
 	badgerRepo      *repository.BadgerRepository
 }
 
-func RegisterRoutes(router *gin.Engine, checkPassword *service.CheckPassword, badgerRepo *repository.BadgerRepository) {
-	handler := &Handler{passwordService: checkPassword, badgerRepo: badgerRepo}
+func NewHandler(passwordService *service.CheckPassword, badgerRepo *repository.BadgerRepository) *Handler {
+	return &Handler{passwordService: passwordService, badgerRepo: badgerRepo}
+}
 
+func RegisterRoutes(router *gin.Engine, handler *Handler) {
 	router.POST("/check", handler.checkPasswordHandler)
 	router.GET("/internal/debug/byHash/:hash", handler.getByHash)
 	router.GET("/internal/debug/getAll", handler.getAllHashes)
@@ -70,10 +72,11 @@ func (handler *Handler) checkPasswordHandler(context *gin.Context) {
 		return
 	}
 
-	isPwned := handler.passwordService.CheckPassword(request.Password)
+	r := handler.passwordService.CheckPassword(request.Password)
 
 	context.JSON(http.StatusOK, gin.H{
-		"password": request.Password,
-		"pwned":    isPwned,
+		"passwordHash": r.PasswordHash,
+		"breachCount":  r.BreachCount,
+		"leaked":       r.IsLeaked,
 	})
 }

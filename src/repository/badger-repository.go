@@ -56,7 +56,7 @@ func (repo *BadgerRepository) Save(blob []byte) {
 }
 
 func (repo *BadgerRepository) GetByHash(passwordHash string) (*HashEntry, error) {
-	repo.logger.Info("Get by password hash ", passwordHash)
+	repo.logger.Info("Get by password hash", "hash", passwordHash)
 	var entry *HashEntry
 
 	err := repo.database.View(func(txn *badger.Txn) error {
