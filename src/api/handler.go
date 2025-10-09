@@ -1,6 +1,7 @@
 package api
 
 import (
+	"leaked-passwords-api/src/repository"
 	"leaked-passwords-api/src/service"
 	"net/http"
 
@@ -9,11 +10,11 @@ import (
 
 type Handler struct {
 	passwordService *service.CheckPassword
-	badgerService   *service.BadgerHashReader
+	badgerRepo      *repository.BadgerRepository
 }
 
-func RegisterRoutes(router *gin.Engine, checkPassword *service.CheckPassword, badgerDebugService *service.BadgerHashReader) {
-	handler := &Handler{passwordService: checkPassword, badgerService: badgerDebugService}
+func RegisterRoutes(router *gin.Engine, checkPassword *service.CheckPassword, badgerRepo *repository.BadgerRepository) {
+	handler := &Handler{passwordService: checkPassword, badgerRepo: badgerRepo}
 
 	router.POST("/check", handler.checkPasswordHandler)
 	router.GET("/internal/debug/byHash/:hash", handler.getByHash)
@@ -28,7 +29,7 @@ func (handler *Handler) getByHash(context *gin.Context) {
 		return
 	}
 
-	hashEntry, err := handler.badgerService.GetByHash(passwordHash)
+	hashEntry, err := handler.badgerRepo.GetByHash(passwordHash)
 
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -47,7 +48,7 @@ func (handler *Handler) getByHash(context *gin.Context) {
 }
 
 func (handler *Handler) getAllHashes(context *gin.Context) {
-	hashes, err := handler.badgerService.GetAll()
+	hashes, err := handler.badgerRepo.GetAll()
 
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

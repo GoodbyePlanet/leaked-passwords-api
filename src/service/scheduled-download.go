@@ -1,18 +1,19 @@
 package service
 
 import (
-	"github.com/dgraph-io/badger/v4"
 	"github.com/robfig/cron/v3"
 	"log/slog"
 	"os"
+
+	"leaked-passwords-api/src/repository"
 )
 
 type ScheduledDownload struct {
-	db *badger.DB
+	badgerRepo *repository.BadgerRepository
 }
 
-func NewScheduledDownload(db *badger.DB) *ScheduledDownload {
-	return &ScheduledDownload{db: db}
+func NewScheduledDownload(badgerRepo *repository.BadgerRepository) *ScheduledDownload {
+	return &ScheduledDownload{badgerRepo: badgerRepo}
 }
 
 func (sd *ScheduledDownload) RunDownload() *cron.Cron {
@@ -24,7 +25,7 @@ func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 		logger.Info("Starting cron job")
 
 		// TODO: Add workers and prefixes as env variables
-		downloader := NewHibpDownloader(10, 20, sd.db)
+		downloader := NewHibpDownloader(10, 20, sd.badgerRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	})
 
@@ -36,7 +37,7 @@ func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 
 	go func() {
 		logger.Info("Running download of service startup")
-		downloader := NewHibpDownloader(10, 20, sd.db)
+		downloader := NewHibpDownloader(10, 20, sd.badgerRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	}()
 

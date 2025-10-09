@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"leaked-passwords-api/src/db"
+	"leaked-passwords-api/src/repository"
 	"log"
 	"log/slog"
 	"net/http"
@@ -25,15 +26,15 @@ func main() {
 	defer database.Close()
 	logger.Info("Database initialized!")
 
-	scheduler := service.NewScheduledDownload(database)
+	badgerRepo := repository.NewBadgerRepository(database)
+	scheduler := service.NewScheduledDownload(badgerRepo)
 	c := scheduler.RunDownload()
 	defer c.Stop()
 
 	router := gin.Default()
 
 	checkPasswordService := service.NewCheckPassword()
-	badgerDebugService := service.NewBadgerHashReader(database)
-	api.RegisterRoutes(router, checkPasswordService, badgerDebugService)
+	api.RegisterRoutes(router, checkPasswordService, badgerRepo)
 
 	PORT := config.LoadConfig().PORT
 	server := &http.Server{

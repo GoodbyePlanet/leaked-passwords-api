@@ -3,7 +3,6 @@ package service
 import (
 	"bufio"
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"leaked-passwords-api/src/repository"
 )
 
 const pwnedRangeApiUrl = "https://api.pwnedpasswords.com/range/%s"
@@ -21,17 +22,17 @@ type HibpDownloader struct {
 	hex5         <-chan string
 	responseData chan []byte
 	client       *http.Client
-	db           *badger.DB
+	repo         *repository.BadgerRepository
 	logger       *slog.Logger
 }
 
-func NewHibpDownloader(workers uint64, prefixes int, db *badger.DB) *HibpDownloader {
+func NewHibpDownloader(workers uint64, prefixes int, repo *repository.BadgerRepository) *HibpDownloader {
 	return &HibpDownloader{
 		nWorkers:     workers,
 		nPrefixes:    prefixes,
 		responseData: make(chan []byte, 100),
 		client:       &http.Client{Timeout: 10 * time.Second},
-		db:           db,
+		repo:         repo,
 		logger:       slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 	}
 }
@@ -53,7 +54,7 @@ func (hd *HibpDownloader) DownloadAndSavePwnedPasswords() {
 		defer hd.logger.Info("DB writer finished")
 
 		for blob := range hd.responseData {
-			hd.saveInDB(blob)
+			hd.repo.Save(blob)
 		}
 	}()
 
@@ -110,36 +111,6 @@ func (hd *HibpDownloader) downloader() {
 		if !ok {
 			hd.logger.Error("Failed after retries", slog.String("prefix", hex5))
 		}
-	}
-}
-
-func (hd *HibpDownloader) saveInDB(blob []byte) {
-	lines := strings.Split(string(blob), "\r\n")
-
-	err := hd.db.Update(func(txn *badger.Txn) error {
-		for _, line := range lines {
-			if line == "" {
-				continue
-			}
-
-			parts := strings.SplitN(line, ":", 2)
-
-			if len(parts) != 2 {
-				continue
-			}
-
-			hash := parts[0]
-			count := parts[1]
-
-			if err := txn.Set([]byte(hash), []byte(count)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		hd.logger.Error("Failed to store data in Badger", slog.Any("error", err))
 	}
 }
 
