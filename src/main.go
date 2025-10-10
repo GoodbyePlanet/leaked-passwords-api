@@ -26,15 +26,17 @@ func main() {
 	defer database.Close()
 	logger.Info("Database initialized!")
 
-	badgerRepo := repository.NewBadgerRepository(database)
-	scheduler := service.NewScheduledDownload(badgerRepo)
-	c := scheduler.RunDownload()
-	defer c.Stop()
+	passwordsRepo := repository.NewPasswordsRepository(database)
+
+	scheduler := service.NewScheduledDownload(passwordsRepo)
+	cron := scheduler.RunDownload()
+	defer cron.Stop()
+
+	passwordService := service.NewPasswordService(passwordsRepo)
 
 	router := gin.Default()
-
-	checkPasswordService := service.NewCheckPassword(badgerRepo)
-	api.RegisterRoutes(router, api.NewHandler(checkPasswordService, badgerRepo))
+	routerRegistrar := api.NewRouterRegistrar(api.NewHandler(passwordService, passwordsRepo))
+	routerRegistrar.RegisterRoutes(router)
 
 	PORT := config.LoadConfig().PORT
 	server := &http.Server{

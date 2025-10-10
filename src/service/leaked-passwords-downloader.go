@@ -22,11 +22,11 @@ type HibpDownloader struct {
 	hex5         <-chan string
 	responseData chan []byte
 	client       *http.Client
-	repo         *repository.BadgerRepository
+	repo         *repository.PasswordsRepository
 	logger       *slog.Logger
 }
 
-func NewHibpDownloader(workers uint64, prefixes int, repo *repository.BadgerRepository) *HibpDownloader {
+func NewHibpDownloader(workers uint64, prefixes int, repo *repository.PasswordsRepository) *HibpDownloader {
 	return &HibpDownloader{
 		nWorkers:     workers,
 		nPrefixes:    prefixes,

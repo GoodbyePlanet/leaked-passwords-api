@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type BadgerRepository struct {
+type PasswordsRepository struct {
 	database *badger.DB
 	logger   *slog.Logger
 }
@@ -18,14 +18,14 @@ type HashEntry struct {
 	Value string
 }
 
-func NewBadgerRepository(database *badger.DB) *BadgerRepository {
-	return &BadgerRepository{
+func NewPasswordsRepository(database *badger.DB) *PasswordsRepository {
+	return &PasswordsRepository{
 		database: database,
 		logger:   slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 	}
 }
 
-func (repo *BadgerRepository) Save(blob []byte) {
+func (repo *PasswordsRepository) Save(blob []byte) {
 	lines := strings.Split(string(blob), "\r\n")
 
 	err := repo.database.Update(func(txn *badger.Txn) error {
@@ -55,7 +55,7 @@ func (repo *BadgerRepository) Save(blob []byte) {
 	}
 }
 
-func (repo *BadgerRepository) GetByHash(passwordHash string) (*HashEntry, error) {
+func (repo *PasswordsRepository) GetByHash(passwordHash string) (*HashEntry, error) {
 	repo.logger.Info("Get by password hash", "hash", passwordHash)
 	var entry *HashEntry
 
@@ -88,7 +88,7 @@ func (repo *BadgerRepository) GetByHash(passwordHash string) (*HashEntry, error)
 	return entry, nil
 }
 
-func (repo *BadgerRepository) GetAll() ([]HashEntry, error) {
+func (repo *PasswordsRepository) GetAll() ([]HashEntry, error) {
 	repo.logger.Info("Getting all entries from DB")
 	var entries []HashEntry
 

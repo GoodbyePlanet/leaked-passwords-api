@@ -9,11 +9,11 @@ import (
 )
 
 type ScheduledDownload struct {
-	badgerRepo *repository.BadgerRepository
+	passwordsRepo *repository.PasswordsRepository
 }
 
-func NewScheduledDownload(badgerRepo *repository.BadgerRepository) *ScheduledDownload {
-	return &ScheduledDownload{badgerRepo: badgerRepo}
+func NewScheduledDownload(passwordsRepo *repository.PasswordsRepository) *ScheduledDownload {
+	return &ScheduledDownload{passwordsRepo: passwordsRepo}
 }
 
 func (sd *ScheduledDownload) RunDownload() *cron.Cron {
@@ -25,7 +25,7 @@ func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 		logger.Info("Starting cron job")
 
 		// TODO: Add workers and prefixes as env variables
-		downloader := NewHibpDownloader(10, 20, sd.badgerRepo)
+		downloader := NewHibpDownloader(10, 20, sd.passwordsRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	})
 
@@ -37,7 +37,7 @@ func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 
 	go func() {
 		logger.Info("Running download of service startup")
-		downloader := NewHibpDownloader(10, 20, sd.badgerRepo)
+		downloader := NewHibpDownloader(10, 20, sd.passwordsRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	}()
 

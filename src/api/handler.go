@@ -1,6 +1,7 @@
 package api
 
 import (
+	"leaked-passwords-api/src/models"
 	"leaked-passwords-api/src/repository"
 	"leaked-passwords-api/src/service"
 	"net/http"
@@ -9,74 +10,69 @@ import (
 )
 
 type Handler struct {
-	passwordService *service.CheckPassword
-	badgerRepo      *repository.BadgerRepository
+	passwordService *service.PasswordService
+	passwordsRepo   *repository.PasswordsRepository
 }
 
-func NewHandler(passwordService *service.CheckPassword, badgerRepo *repository.BadgerRepository) *Handler {
-	return &Handler{passwordService: passwordService, badgerRepo: badgerRepo}
+func NewHandler(passwordService *service.PasswordService, passwordsRepo *repository.PasswordsRepository) *Handler {
+	return &Handler{passwordService: passwordService, passwordsRepo: passwordsRepo}
 }
 
-func RegisterRoutes(router *gin.Engine, handler *Handler) {
-	router.POST("/check", handler.checkPasswordHandler)
-	router.GET("/internal/debug/byHash/:hash", handler.getByHash)
-	router.GET("/internal/debug/getAll", handler.getAllHashes)
-}
-
-func (handler *Handler) getByHash(context *gin.Context) {
-	passwordHash := context.Param("hash")
+func (handler *Handler) GetByHash(c *gin.Context) {
+	passwordHash := c.Param("hash")
 
 	if passwordHash == "" {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Missing passwordHash param!"})
+		respondWithError(c, http.StatusBadRequest, "Missing passwordHash param!")
 		return
 	}
 
-	hashEntry, err := handler.badgerRepo.GetByHash(passwordHash)
+	hashEntry, err := handler.passwordsRepo.GetByHash(passwordHash)
 
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if hashEntry == nil {
-		context.JSON(http.StatusNotFound, gin.H{"error": "hash not found"})
+		respondWithError(c, http.StatusNotFound, "Hash not found")
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{
-		"hash":  hashEntry.Key,
-		"count": hashEntry.Value,
+	c.JSON(http.StatusOK, models.HashResponse{
+		Hash:  hashEntry.Key,
+		Count: hashEntry.Value,
 	})
 }
 
-func (handler *Handler) getAllHashes(context *gin.Context) {
-	hashes, err := handler.badgerRepo.GetAll()
+func (handler *Handler) GetAllHashes(c *gin.Context) {
+	hashes, err := handler.passwordsRepo.GetAll()
 
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondWithError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{
-		"total_returned": len(hashes),
-		"hashes":         hashes,
+	c.JSON(http.StatusOK, models.HashesListResponse{
+		TotalReturned: len(hashes),
+		Hashes:        hashes,
 	})
 }
 
-func (handler *Handler) checkPasswordHandler(context *gin.Context) {
-	var request struct {
-		Password string `json:"password"`
-	}
-	if err := context.ShouldBindJSON(&request); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+func (handler *Handler) CheckPasswordHandler(c *gin.Context) {
+	var request models.CheckPasswordRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
 	r := handler.passwordService.CheckPassword(request.Password)
-
-	context.JSON(http.StatusOK, gin.H{
-		"passwordHash": r.PasswordHash,
-		"breachCount":  r.BreachCount,
-		"leaked":       r.IsLeaked,
+	c.JSON(http.StatusOK, models.CheckPasswordResponse{
+		PasswordHash: r.PasswordHash,
+		BreachCount:  r.BreachCount,
+		IsLeaked:     r.IsLeaked,
 	})
+}
+
+func respondWithError(c *gin.Context, code int, message string) {
+	c.JSON(code, gin.H{"error": message})
 }
