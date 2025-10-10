@@ -38,7 +38,12 @@ func NewHibpDownloader(workers uint64, prefixes int, repo *repository.PasswordsR
 }
 
 func (hd *HibpDownloader) DownloadAndSavePwnedPasswords() {
-	hd.hex5 = generateHex5Prefixes(hd.nPrefixes)
+	if hd.nPrefixes > 0 {
+		hd.hex5 = generateHex5Prefixes(hd.nPrefixes)
+	} else {
+		hd.hex5 = generateHex5Prefixes()
+	}
+
 	hd.logger.Info("Starting download", "workers", hd.nWorkers, "prefixes", hd.nPrefixes)
 	var wg sync.WaitGroup
 	for i := uint64(0); i < hd.nWorkers; i++ {

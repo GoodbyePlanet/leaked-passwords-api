@@ -8,8 +8,11 @@ import (
 )
 
 type Config struct {
-	PORT string
-	Env  string
+	PORT       string
+	OUTPUT_DIR string
+	WORKERS    string
+	PREFIXES   string
+	Env        string
 }
 
 func LoadConfig() *Config {
@@ -27,8 +30,11 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		PORT: getEnv("PORT", "8080"),
-		Env:  env,
+		PORT:       getEnv("PORT", "8080"),
+		OUTPUT_DIR: getEnv("OUTPUT_DIR", "./tmp"),
+		WORKERS:    getEnv("WORKERS", "10"),
+		PREFIXES:   getEnv("PREFIXES", "0"),
+		Env:        env,
 	}
 }
 

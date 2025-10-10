@@ -2,8 +2,10 @@ package service
 
 import (
 	"github.com/robfig/cron/v3"
+	"leaked-passwords-api/src/config"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"leaked-passwords-api/src/repository"
 )
@@ -18,14 +20,16 @@ func NewScheduledDownload(passwordsRepo *repository.PasswordsRepository) *Schedu
 
 func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	env := config.LoadConfig()
+	workers, _ := strconv.ParseUint(env.WORKERS, 10, 64)
+	prefixes, _ := strconv.Atoi(env.PREFIXES)
 	c := cron.New()
 
 	// Run once on the first day of every month at midnight
 	_, err := c.AddFunc("0 0 1 * *", func() {
 		logger.Info("Starting cron job")
 
-		// TODO: Add workers and prefixes as env variables
-		downloader := NewHibpDownloader(10, 20, sd.passwordsRepo)
+		downloader := NewHibpDownloader(workers, prefixes, sd.passwordsRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	})
 
@@ -37,7 +41,7 @@ func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 
 	go func() {
 		logger.Info("Running download of service startup")
-		downloader := NewHibpDownloader(10, 20, sd.passwordsRepo)
+		downloader := NewHibpDownloader(workers, prefixes, sd.passwordsRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	}()
 

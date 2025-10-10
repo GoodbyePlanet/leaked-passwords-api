@@ -22,7 +22,7 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	database := db.Init("./tmp/badger")
+	database := db.Init(config.LoadConfig().OUTPUT_DIR)
 	defer database.Close()
 	logger.Info("Database initialized!")
 
