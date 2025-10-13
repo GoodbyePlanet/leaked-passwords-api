@@ -40,7 +40,7 @@ func (sd *ScheduledDownload) RunDownload() *cron.Cron {
 	c.Start()
 
 	go func() {
-		logger.Info("Running download of service startup")
+		logger.Info("Running download on service startup")
 		downloader := NewHibpDownloader(workers, prefixes, sd.passwordsRepo)
 		downloader.DownloadAndSavePwnedPasswords()
 	}()
