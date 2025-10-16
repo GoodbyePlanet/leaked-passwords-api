@@ -17,6 +17,9 @@ docker build -t pwned-api .
 docker run --env-file .env.development -e APP_ENV=development -e RUNNING_IN_DOCKER=true -p 8080:8080 pwned-api
 ```
 
+#### Want to see it in action with the Spring authorization server?
+Go to this [Github repo](https://github.com/GoodbyePlanet/spring-cg-bff) and follow readme.
+
 Example CURL
 ```shell
 curl -X POST http://localhost:8080/check \
