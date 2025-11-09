@@ -1,11 +1,12 @@
 package service
 
 import (
-	"github.com/robfig/cron/v3"
 	"leaked-passwords-api/src/config"
 	"log/slog"
 	"os"
 	"strconv"
+
+	"github.com/robfig/cron/v3"
 
 	"leaked-passwords-api/src/repository"
 )

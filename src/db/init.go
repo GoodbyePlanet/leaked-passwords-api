@@ -1,8 +1,9 @@
 package db
 
 import (
-	"github.com/dgraph-io/badger/v4"
 	"log"
+
+	"github.com/dgraph-io/badger/v4"
 )
 
 var DB *badger.DB

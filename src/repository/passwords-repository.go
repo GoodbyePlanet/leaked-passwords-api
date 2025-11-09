@@ -2,10 +2,11 @@ package repository
 
 import (
 	"errors"
-	"github.com/dgraph-io/badger/v4"
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/dgraph-io/badger/v4"
 )
 
 type PasswordsRepository struct {

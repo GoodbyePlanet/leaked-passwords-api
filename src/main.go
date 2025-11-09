@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"leaked-passwords-api/src/db"
 	"leaked-passwords-api/src/repository"
 	"log"
@@ -13,6 +12,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gin-gonic/gin"
 
 	"leaked-passwords-api/src/api"
 	"leaked-passwords-api/src/config"
